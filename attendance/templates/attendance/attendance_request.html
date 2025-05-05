@@ -1,0 +1,112 @@
+{% extends 'core/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Attendance Request{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-clock me-2"></i>Attendance Request</h4>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5 class="card-title">Today's Information</h5>
+                                <p class="mb-1"><strong>Date:</strong> {{ today|date:"F d, Y" }}</p>
+                                <p class="mb-1"><strong>Current Time:</strong> {{ current_time|time:"H:i" }}</p>
+                                <p class="mb-1"><strong>Work Hours:</strong> {{ work_start|time:"H:i" }} - {{ work_end|time:"H:i" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card {% if checked_in %}bg-warning-subtle{% else %}bg-success-subtle{% endif %}">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">Current Status</h5>
+                                <p class="display-6 mb-0">
+                                    {% if checked_in %}
+                                        <i class="fas fa-sign-out-alt text-warning me-2"></i>Ready to Check Out
+                                    {% else %}
+                                        <i class="fas fa-sign-in-alt text-success me-2"></i>Ready to Check In
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-12">
+                            {{ form|crispy }}
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-lg btn-primary">
+                            {% if checked_in %}
+                                <i class="fas fa-sign-out-alt me-2"></i>Check Out
+                            {% else %}
+                                <i class="fas fa-sign-in-alt me-2"></i>Check In
+                            {% endif %}
+                        </button>
+                    </div>
+                </form>
+                
+                {% if attendance %}
+                    <div class="mt-4">
+                        <h5>Attendance Details</h5>
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>Date</th>
+                                <td>{{ attendance.date|date:"F d, Y" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Check In</th>
+                                <td>{{ attendance.check_in|time:"H:i:s" }}</td>
+                            </tr>
+                            {% if attendance.check_out %}
+                                <tr>
+                                    <th>Check Out</th>
+                                    <td>{{ attendance.check_out|time:"H:i:s" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Duration</th>
+                                    <td>{{ attendance.get_duration|floatformat:2 }} hours</td>
+                                </tr>
+                            {% endif %}
+                            <tr>
+                                <th>Status</th>
+                                <td>
+                                    {% if attendance.status == 'pending' %}
+                                        <span class="badge bg-warning">Pending</span>
+                                    {% elif attendance.status == 'approved' %}
+                                        <span class="badge bg-success">Approved</span>
+                                    {% elif attendance.status == 'rejected' %}
+                                        <span class="badge bg-danger">Rejected</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% if attendance.notes %}
+                                <tr>
+                                    <th>Notes</th>
+                                    <td>{{ attendance.notes }}</td>
+                                </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="card-footer text-center">
+                <a href="{% url 'attendance:history' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-history me-2"></i>View Attendance History
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
