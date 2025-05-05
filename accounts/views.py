@@ -9,16 +9,32 @@ def register(request):
     if request.method == 'POST':
         form = RegisterForm(request.POST)
         if form.is_valid():
-            user = form.save()
-            # Update user profile with the selected role
-            user.userprofile.role = form.cleaned_data.get('role')
-            user.userprofile.save()
+            # Get the role before saving the user
+            role = form.cleaned_data.get('role')
+            
+            # Save user without saving m2m fields
+            user = form.save(commit=False)
             
             # Set staff status for employers
-            if user.userprofile.role == UserProfile.EMPLOYER:
+            if role == UserProfile.EMPLOYER:
                 user.is_staff = True
-                user.save()
-                
+            
+            # Save the user to create the instance in the database
+            user.save()
+            
+            # Force save form's m2m fields
+            form.save_m2m()
+            
+            # Check if userprofile exists, create if it doesn't
+            try:
+                profile = user.userprofile
+            except UserProfile.DoesNotExist:
+                profile = UserProfile.objects.create(user=user)
+            
+            # Update the profile with role
+            profile.role = role
+            profile.save()
+            
             login(request, user)
             messages.success(request, 'Registration successful!')
             return redirect('core:dashboard')
