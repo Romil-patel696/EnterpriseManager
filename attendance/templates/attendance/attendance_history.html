@@ -1,0 +1,241 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Attendance History - SME App{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3">Attendance History</h1>
+        <div>
+            <a href="{% url 'attendance:request' %}" class="btn btn-primary">
+                <i class="fas fa-clock me-1"></i> Check In/Out
+            </a>
+            <a href="{% url 'attendance:export_my_attendance' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-file-export me-1"></i> Export
+            </a>
+        </div>
+    </div>
+    
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Attendance Records</h6>
+            
+            <!-- Filter Form -->
+            <form class="d-flex" method="get">
+                <input type="date" name="date_from" class="form-control me-2" value="{{ date_from|date:'Y-m-d' }}"/>
+                <input type="date" name="date_to" class="form-control me-2" value="{{ date_to|date:'Y-m-d' }}"/>
+                
+                <select name="status" class="form-select me-2" style="width: auto;" onchange="this.form.submit()">
+                    <option value="" {% if not status_filter %}selected{% endif %}>All Status</option>
+                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                </select>
+                
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="fas fa-filter me-1"></i> Filter
+                </button>
+            </form>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Check In</th>
+                            <th>Check Out</th>
+                            <th>Duration</th>
+                            <th>Status</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for attendance in attendance_records %}
+                        <tr>
+                            <td>{{ attendance.date|date:"M d, Y" }}</td>
+                            <td>
+                                {{ attendance.check_in|time:"H:i" }}
+                                {% if attendance.is_late %}
+                                <span class="badge bg-warning text-dark">Late</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if attendance.check_out %}
+                                {{ attendance.check_out|time:"H:i" }}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if attendance.check_out %}
+                                {% with hours=attendance.get_duration %}
+                                {{ hours|floatformat:2 }} hrs
+                                {% endwith %}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if attendance.status == 'pending' %}
+                                <span class="badge bg-warning text-dark">Pending</span>
+                                {% elif attendance.status == 'approved' %}
+                                <span class="badge bg-success">Approved</span>
+                                {% elif attendance.status == 'rejected' %}
+                                <span class="badge bg-danger">Rejected</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if attendance.notes %}
+                                {{ attendance.notes|truncatechars:30 }}
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-3">
+                                <div class="text-muted">
+                                    <i class="fas fa-info-circle mr-1"></i> No attendance records found
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if attendance_records.has_other_pages %}
+            <nav aria-label="Attendance history pagination" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if attendance_records.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from|date:'Y-m-d' }}{% endif %}{% if date_to %}&date_to={{ date_to|date:'Y-m-d' }}{% endif %}">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ attendance_records.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from|date:'Y-m-d' }}{% endif %}{% if date_to %}&date_to={{ date_to|date:'Y-m-d' }}{% endif %}">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in attendance_records.paginator.page_range %}
+                        {% if attendance_records.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        {% elif num > attendance_records.number|add:'-3' and num < attendance_records.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from|date:'Y-m-d' }}{% endif %}{% if date_to %}&date_to={{ date_to|date:'Y-m-d' }}{% endif %}">
+                                {{ num }}
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if attendance_records.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ attendance_records.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from|date:'Y-m-d' }}{% endif %}{% if date_to %}&date_to={{ date_to|date:'Y-m-d' }}{% endif %}">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ attendance_records.paginator.num_pages }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if date_from %}&date_from={{ date_from|date:'Y-m-d' }}{% endif %}{% if date_to %}&date_to={{ date_to|date:'Y-m-d' }}{% endif %}">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Attendance Statistics Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Attendance Summary - Current Month</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card border-success mb-3">
+                        <div class="card-body text-center">
+                            <div class="d-flex align-items-center justify-content-center mb-3" style="height: 70px;">
+                                <i class="fas fa-check-circle text-success fa-3x"></i>
+                            </div>
+                            <h5 class="card-title">Present Days</h5>
+                            <p class="card-text display-4">{{ present_days }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-warning mb-3">
+                        <div class="card-body text-center">
+                            <div class="d-flex align-items-center justify-content-center mb-3" style="height: 70px;">
+                                <i class="fas fa-clock text-warning fa-3x"></i>
+                            </div>
+                            <h5 class="card-title">Late Arrivals</h5>
+                            <p class="card-text display-4">{{ late_days }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-info mb-3">
+                        <div class="card-body text-center">
+                            <div class="d-flex align-items-center justify-content-center mb-3" style="height: 70px;">
+                                <i class="fas fa-business-time text-info fa-3x"></i>
+                            </div>
+                            <h5 class="card-title">Total Hours</h5>
+                            <p class="card-text display-4">{{ total_hours|floatformat:1 }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            {% if recent_calendar_data %}
+            <div class="row mt-4">
+                <div class="col-12">
+                    <h5 class="mb-3">Attendance Calendar</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered text-center">
+                            <thead>
+                                <tr>
+                                    <th>Mon</th>
+                                    <th>Tue</th>
+                                    <th>Wed</th>
+                                    <th>Thu</th>
+                                    <th>Fri</th>
+                                    <th>Sat</th>
+                                    <th>Sun</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for week in recent_calendar_data %}
+                                <tr>
+                                    {% for day in week %}
+                                    <td class="{% if day.is_present %}bg-success text-white{% elif day.is_absent %}bg-danger text-white{% elif day.is_weekend %}bg-light{% endif %}">
+                                        {% if day.date %}
+                                        <div class="py-2">
+                                            <div class="small">{{ day.date|date:"d" }}</div>
+                                            {% if day.check_in %}
+                                            <div class="small fw-bold">{{ day.check_in|time:"H:i" }}</div>
+                                            {% endif %}
+                                        </div>
+                                        {% endif %}
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

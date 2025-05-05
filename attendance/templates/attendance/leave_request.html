@@ -1,0 +1,172 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}Apply for Leave - SME App{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Apply for Leave</h6>
+                </div>
+                <div class="card-body">
+                    {% if leave_balance %}
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5 class="card-title">Casual Leave</h5>
+                                    <div class="lead text-center text-success mb-1">
+                                        <strong>{{ leave_balance.available_casual_leave }}</strong>
+                                    </div>
+                                    <p class="text-center mb-0">days remaining</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5 class="card-title">Sick Leave</h5>
+                                    <div class="lead text-center text-info mb-1">
+                                        <strong>{{ leave_balance.available_sick_leave }}</strong>
+                                    </div>
+                                    <p class="text-center mb-0">days remaining</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.leave_type|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.day_type|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.start_date|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.end_date|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        {{ form.reason|as_crispy_field }}
+                        
+                        <div class="alert alert-info">
+                            <div class="d-flex">
+                                <div class="me-3">
+                                    <i class="fas fa-info-circle fa-2x"></i>
+                                </div>
+                                <div>
+                                    <strong>Important Information</strong>
+                                    <p class="mb-0">Please apply for leave at least 3 days in advance for planned leaves. For emergency or sick leaves, apply as soon as possible. Your leave request will be reviewed by your manager.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{% url 'attendance:index' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-1"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-1"></i> Submit Leave Request
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Leave Requests</h6>
+                    <a href="{% url 'attendance:leave_history' %}" class="btn btn-sm btn-link">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Period</th>
+                                    <th>Duration</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for leave in recent_leaves %}
+                                <tr>
+                                    <td>{{ leave.leave_type.name }}</td>
+                                    <td>
+                                        {{ leave.start_date|date:"M d" }}
+                                        {% if leave.start_date != leave.end_date %}
+                                        - {{ leave.end_date|date:"M d" }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ leave.get_business_days }} day{{ leave.get_business_days|pluralize }}
+                                        {% if leave.day_type != 'full' %}
+                                        <span class="badge bg-info">{{ leave.get_day_type_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if leave.status == 'pending' %}
+                                        <span class="badge bg-warning">Pending</span>
+                                        {% elif leave.status == 'approved' %}
+                                        <span class="badge bg-success">Approved</span>
+                                        {% elif leave.status == 'rejected' %}
+                                        <span class="badge bg-danger">Rejected</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-3">
+                                        <div class="text-muted">
+                                            <i class="fas fa-info-circle me-1"></i> No leave requests found
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Date range validation
+    document.addEventListener('DOMContentLoaded', function() {
+        const startDateInput = document.getElementById('id_start_date');
+        const endDateInput = document.getElementById('id_end_date');
+        
+        if (startDateInput && endDateInput) {
+            startDateInput.addEventListener('change', function() {
+                endDateInput.min = startDateInput.value;
+                if (endDateInput.value && endDateInput.value < startDateInput.value) {
+                    endDateInput.value = startDateInput.value;
+                }
+            });
+            
+            // Set initial min value for end date
+            if (startDateInput.value) {
+                endDateInput.min = startDateInput.value;
+            }
+        }
+    });
+</script>
+{% endblock %}

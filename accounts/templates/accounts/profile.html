@@ -1,0 +1,211 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}My Profile - SME App{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Profile Overview Card -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow">
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        {% if user.userprofile.profile_image %}
+                            <img src="{{ user.userprofile.profile_image.url }}" alt="Profile Image" class="rounded-circle img-fluid mx-auto d-block" style="width: 120px; height: 120px; object-fit: cover;">
+                        {% else %}
+                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mx-auto" style="width: 120px; height: 120px; font-size: 3rem;">
+                                {{ user.first_name|first|upper }}{{ user.last_name|first|upper }}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <h4 class="mb-1">{{ user.get_full_name }}</h4>
+                    <p class="text-muted mb-3">{{ user.email }}</p>
+                    
+                    <div class="d-flex justify-content-center mb-3">
+                        {% if user.is_employer %}
+                            <span class="badge bg-success px-3 py-2">Employer</span>
+                        {% else %}
+                            <span class="badge bg-info px-3 py-2">Employee</span>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'accounts:edit_profile' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-edit me-1"></i> Edit Profile
+                        </a>
+                    </div>
+                </div>
+                
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-briefcase me-2"></i> Position</span>
+                        <span>{{ user.userprofile.position|default:"Not specified" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-building me-2"></i> Department</span>
+                        <span>{{ user.userprofile.department|default:"Not specified" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-phone me-2"></i> Phone</span>
+                        <span>{{ user.userprofile.phone|default:"Not specified" }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-calendar-alt me-2"></i> Joined</span>
+                        <span>{{ user.date_joined|date:"M d, Y" }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Profile Details -->
+        <div class="col-lg-8">
+            <!-- Work Information -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Work Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% if user.is_employee and user.userprofile.employer %}
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Reports To:</strong></p>
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style="width: 40px; height: 40px; font-size: 16px;">
+                                        {{ user.userprofile.employer.first_name|first|upper }}{{ user.userprofile.employer.last_name|first|upper }}
+                                    </div>
+                                    <div>
+                                        <p class="mb-0 fw-bold">{{ user.userprofile.employer.get_full_name }}</p>
+                                        <p class="small text-muted mb-0">{{ user.userprofile.employer.email }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        {% if user.is_employer %}
+                            <div class="col-md-6">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h5 class="card-title">Your Team</h5>
+                                        <p class="display-4 mb-0">{{ employee_count }}</p>
+                                        <p class="text-muted">employees</p>
+                                        <a href="{% url 'accounts:employee_list' %}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-users me-1"></i> Manage Team
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Activity -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Activity</h6>
+                </div>
+                <div class="card-body">
+                    <div class="timeline">
+                        {% if recent_attendances or recent_leaves or recent_inventory %}
+                            {% for attendance in recent_attendances %}
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-success"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="timeline-title">Attendance Record</h6>
+                                        <p class="timeline-date">{{ attendance.date|date:"M d, Y" }}</p>
+                                        <p>Checked in at {{ attendance.check_in|time:"H:i" }}
+                                        {% if attendance.check_out %}
+                                            and checked out at {{ attendance.check_out|time:"H:i" }}.
+                                        {% else %}
+                                            (not checked out yet).
+                                        {% endif %}</p>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                            
+                            {% for leave in recent_leaves %}
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-info"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="timeline-title">Leave Request</h6>
+                                        <p class="timeline-date">{{ leave.created_at|date:"M d, Y" }}</p>
+                                        <p>Requested {{ leave.leave_type.name }} leave for {{ leave.start_date|date:"M d" }}
+                                        {% if leave.start_date != leave.end_date %}
+                                            to {{ leave.end_date|date:"M d" }}
+                                        {% endif %}.
+                                        <span class="badge {% if leave.status == 'pending' %}bg-warning{% elif leave.status == 'approved' %}bg-success{% elif leave.status == 'rejected' %}bg-danger{% endif %}">
+                                            {{ leave.get_status_display }}
+                                        </span></p>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                            
+                            {% for transaction in recent_inventory %}
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-warning"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="timeline-title">Inventory Transaction</h6>
+                                        <p class="timeline-date">{{ transaction.date|date:"M d, Y" }}</p>
+                                        <p>{{ transaction.description }}</p>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center py-3">
+                                <i class="fas fa-info-circle text-muted mb-2" style="font-size: 2rem;"></i>
+                                <p>No recent activity to display</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+    
+    .timeline-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+    }
+    
+    .timeline-marker {
+        position: absolute;
+        left: -30px;
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        top: 4px;
+    }
+    
+    .timeline-title {
+        margin-bottom: 0;
+        font-weight: 600;
+    }
+    
+    .timeline-date {
+        color: #6c757d;
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .timeline:before {
+        content: '';
+        position: absolute;
+        left: -23px;
+        top: 0;
+        height: 100%;
+        width: 2px;
+        background: #e9ecef;
+    }
+</style>
+{% endblock %}

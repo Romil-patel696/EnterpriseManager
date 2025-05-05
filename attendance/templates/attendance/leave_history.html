@@ -1,0 +1,235 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Leave History - SME App{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3">Leave History</h1>
+        <div>
+            <a href="{% url 'attendance:leave_request' %}" class="btn btn-primary">
+                <i class="fas fa-plus-circle me-1"></i> Apply for Leave
+            </a>
+            <a href="{% url 'attendance:export_my_attendance' %}?type=leave" class="btn btn-outline-secondary">
+                <i class="fas fa-file-export me-1"></i> Export
+            </a>
+        </div>
+    </div>
+    
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Leave Records</h6>
+            
+            <!-- Filter Form -->
+            <form class="d-flex" method="get">
+                <select name="status" class="form-select me-2" style="width: auto;" onchange="this.form.submit()">
+                    <option value="" {% if not status_filter %}selected{% endif %}>All Status</option>
+                    <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                    <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                </select>
+                
+                <select name="leave_type" class="form-select me-2" style="width: auto;" onchange="this.form.submit()">
+                    <option value="" {% if not type_filter %}selected{% endif %}>All Types</option>
+                    {% for type in leave_types %}
+                        <option value="{{ type.id }}" {% if type_filter == type.id|stringformat:"i" %}selected{% endif %}>{{ type.name }}</option>
+                    {% endfor %}
+                </select>
+                
+                <select name="year" class="form-select" style="width: auto;" onchange="this.form.submit()">
+                    <option value="" {% if not year_filter %}selected{% endif %}>All Years</option>
+                    {% for year in years %}
+                        <option value="{{ year }}" {% if year_filter == year|stringformat:"i" %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Leave Type</th>
+                            <th>Period</th>
+                            <th>Duration</th>
+                            <th>Reason</th>
+                            <th>Requested On</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for leave in leave_records %}
+                        <tr>
+                            <td>{{ leave.leave_type.name }}</td>
+                            <td>
+                                {{ leave.start_date|date:"M d, Y" }}
+                                {% if leave.start_date != leave.end_date %}
+                                <br>
+                                <small>to</small> {{ leave.end_date|date:"M d, Y" }}
+                                {% endif %}
+                                {% if leave.day_type != 'full' %}
+                                <br>
+                                <span class="badge bg-info">{{ leave.get_day_type_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ leave.get_business_days }} day{{ leave.get_business_days|pluralize }}</td>
+                            <td>
+                                {% if leave.reason %}
+                                    {{ leave.reason|truncatechars:50 }}
+                                {% else %}
+                                    <span class="text-muted">No reason provided</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ leave.created_at|date:"M d, Y" }}</td>
+                            <td>
+                                {% if leave.status == 'pending' %}
+                                <span class="badge bg-warning text-dark">Pending</span>
+                                {% elif leave.status == 'approved' %}
+                                <span class="badge bg-success">Approved</span>
+                                {% elif leave.status == 'rejected' %}
+                                <span class="badge bg-danger">Rejected</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'attendance:leave_detail' leave.id %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-3">
+                                <div class="text-muted">
+                                    <i class="fas fa-info-circle mr-1"></i> No leave records found
+                                </div>
+                                <a href="{% url 'attendance:leave_request' %}" class="btn btn-primary mt-2">
+                                    <i class="fas fa-plus-circle me-1"></i> Apply for Leave
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if leave_records.has_other_pages %}
+            <nav aria-label="Leave history pagination" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if leave_records.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&leave_type={{ type_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ leave_records.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&leave_type={{ type_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for num in leave_records.paginator.page_range %}
+                        {% if leave_records.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        {% elif num > leave_records.number|add:'-3' and num < leave_records.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&leave_type={{ type_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}">
+                                {{ num }}
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if leave_records.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ leave_records.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&leave_type={{ type_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ leave_records.paginator.num_pages }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&leave_type={{ type_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Leave Summary Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Leave Summary</h6>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5 class="mb-3">Leave Entitlement</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Leave Type</th>
+                                    <th>Total Days</th>
+                                    <th>Used</th>
+                                    <th>Remaining</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if leave_balance %}
+                                <tr>
+                                    <td>Casual Leave</td>
+                                    <td>{{ leave_balance.casual_leave }}</td>
+                                    <td>{{ leave_balance.used_casual_leave }}</td>
+                                    <td class="font-weight-bold">{{ leave_balance.available_casual_leave }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Sick Leave</td>
+                                    <td>{{ leave_balance.sick_leave }}</td>
+                                    <td>{{ leave_balance.used_sick_leave }}</td>
+                                    <td class="font-weight-bold">{{ leave_balance.available_sick_leave }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center">No leave balance information available</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h5 class="mb-3">Leave by Status</h5>
+                    <div class="d-flex justify-content-around text-center">
+                        <div class="px-3">
+                            <div class="rounded-circle bg-warning d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 60px; height: 60px; font-size: 1.5rem;">
+                                <i class="fas fa-clock text-white"></i>
+                            </div>
+                            <div class="mt-2">Pending</div>
+                            <div class="h4">{{ pending_count }}</div>
+                        </div>
+                        <div class="px-3">
+                            <div class="rounded-circle bg-success d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 60px; height: 60px; font-size: 1.5rem;">
+                                <i class="fas fa-check text-white"></i>
+                            </div>
+                            <div class="mt-2">Approved</div>
+                            <div class="h4">{{ approved_count }}</div>
+                        </div>
+                        <div class="px-3">
+                            <div class="rounded-circle bg-danger d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 60px; height: 60px; font-size: 1.5rem;">
+                                <i class="fas fa-times text-white"></i>
+                            </div>
+                            <div class="mt-2">Rejected</div>
+                            <div class="h4">{{ rejected_count }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
