@@ -41,4 +41,9 @@ urlpatterns = [
     # Profile URLs
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),
+    
+    # Employee management URLs
+    path('employees/', views.employee_list, name='employee_list'),
+    path('employees/register/', views.register_employee, name='register_employee'),
+    path('employees/<int:employee_id>/', views.employee_detail, name='employee_detail'),
 ]
