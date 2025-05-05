@@ -38,6 +38,7 @@ class UserProfile(models.Model):
     department = models.CharField(max_length=50, blank=True, null=True)
     position = models.CharField(max_length=50, blank=True, null=True)
     profile_image = models.ImageField(upload_to='profile_images/', blank=True, null=True)
+    employer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='employees')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

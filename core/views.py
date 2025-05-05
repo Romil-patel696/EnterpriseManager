@@ -5,8 +5,9 @@ from .models import Notification
 from inventory.models import Product, StockRequest
 from attendance.models import Attendance, Leave
 from django.utils import timezone
-from django.db.models import Count, Sum, Avg, Q
+from django.db.models import Count, Sum, Avg, Q, F
 from django.contrib import messages
+from django.db import models
 
 def index(request):
     """Landing page view"""

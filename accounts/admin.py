@@ -6,6 +6,7 @@ class UserProfileInline(admin.StackedInline):
     model = UserProfile
     can_delete = False
     verbose_name_plural = 'Profile'
+    fk_name = 'user'
 
 class CustomUserAdmin(UserAdmin):
     inlines = (UserProfileInline,)
