@@ -1,0 +1,163 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Leave Request Detail - SME App{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="mb-4">
+        <a href="{% url 'attendance:leave_approvals' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Leave Approvals
+        </a>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Leave Request Detail</h6>
+                    <span class="badge {% if leave.status == 'pending' %}bg-warning{% elif leave.status == 'approved' %}bg-success{% elif leave.status == 'rejected' %}bg-danger{% endif %} text-white">
+                        {{ leave.get_status_display }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <p class="mb-2"><strong>Employee:</strong> {{ leave.employee.get_full_name|default:leave.employee.username }}</p>
+                            <p class="mb-2"><strong>Department:</strong> {{ leave.employee.userprofile.department|default:'Not specified' }}</p>
+                            <p class="mb-2"><strong>Position:</strong> {{ leave.employee.userprofile.position|default:'Not specified' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-2"><strong>Leave Type:</strong> {{ leave.leave_type.name }}</p>
+                            <p class="mb-2"><strong>Start Date:</strong> {{ leave.start_date }}</p>
+                            <p class="mb-2"><strong>End Date:</strong> {{ leave.end_date }}</p>
+                            <p class="mb-2">
+                                <strong>Duration:</strong> {{ duration }} day{% if duration != 1 %}s{% endif %}
+                                {% if leave.day_type != 'full' %}
+                                <span class="badge bg-info">{{ leave.get_day_type_display }}</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    {% if leave.reason %}
+                    <div class="mb-4">
+                        <h6 class="font-weight-bold">Reason</h6>
+                        <div class="border rounded p-3 bg-light">
+                            {{ leave.reason }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if leave.status == 'rejected' and leave.rejection_reason %}
+                    <div class="mb-4">
+                        <h6 class="font-weight-bold text-danger">Rejection Reason</h6>
+                        <div class="border border-danger rounded p-3 bg-light">
+                            {{ leave.rejection_reason }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if leave.status == 'pending' %}
+                    <div class="d-flex justify-content-end mt-4">
+                        <a href="{% url 'attendance:approve_leave' leave.id %}" class="btn btn-success me-2">
+                            <i class="fas fa-check me-1"></i> Approve
+                        </a>
+                        <a href="{% url 'attendance:reject_leave' leave.id %}" class="btn btn-danger">
+                            <i class="fas fa-times me-1"></i> Reject
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Leave Balance</h6>
+                </div>
+                <div class="card-body">
+                    {% if leave_balance %}
+                    <div class="mb-4">
+                        <h6 class="font-weight-bold">Annual Leave</h6>
+                        <div class="progress mb-2" style="height: 20px;">
+                            {% with used=leave_balance.used_casual_leave total=leave_balance.casual_leave %}
+                            {% with percent=used|div:total|mul:100 %}
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ percent }}%" 
+                                aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ used }}/{{ total }}
+                            </div>
+                            {% endwith %}
+                            {% endwith %}
+                        </div>
+                        <small class="text-muted">{{ leave_balance.casual_leave|sub:leave_balance.used_casual_leave }} days remaining</small>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6 class="font-weight-bold">Sick Leave</h6>
+                        <div class="progress mb-2" style="height: 20px;">
+                            {% with used=leave_balance.used_sick_leave total=leave_balance.sick_leave %}
+                            {% with percent=used|div:total|mul:100 %}
+                            <div class="progress-bar bg-info" role="progressbar" style="width: {{ percent }}%" 
+                                aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ used }}/{{ total }}
+                            </div>
+                            {% endwith %}
+                            {% endwith %}
+                        </div>
+                        <small class="text-muted">{{ leave_balance.sick_leave|sub:leave_balance.used_sick_leave }} days remaining</small>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        No leave balance information available for this employee.
+                    </div>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    <div class="small">
+                        <p class="mb-1"><strong>Leave History</strong></p>
+                        <ul class="list-group list-group-flush small">
+                            {% for leave in leave.employee.leave_requests.all|slice:":5" %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center p-2">
+                                <div>
+                                    <span class="badge {% if leave.status == 'pending' %}bg-warning{% elif leave.status == 'approved' %}bg-success{% elif leave.status == 'rejected' %}bg-danger{% endif %} me-1">
+                                        {{ leave.get_status_display }}
+                                    </span>
+                                    {{ leave.leave_type.name }} Leave
+                                </div>
+                                <span>{{ leave.start_date|date:"M d" }} - {{ leave.end_date|date:"M d" }}</span>
+                            </li>
+                            {% empty %}
+                            <li class="list-group-item text-center">
+                                No previous leave requests.
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Custom filters for template calculations -->
+<script>
+    // These would be better as Django template filters, but for simplicity we're using JS
+    function div(a, b) {
+        return a / b;
+    }
+    
+    function mul(a, b) {
+        return a * b;
+    }
+    
+    function sub(a, b) {
+        return a - b;
+    }
+</script>
+{% endblock %}

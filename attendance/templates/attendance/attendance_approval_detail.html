@@ -1,0 +1,140 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Attendance Detail - SME App{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="mb-4">
+        <a href="{% url 'attendance:attendance_approvals' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Approvals
+        </a>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Attendance Detail</h6>
+                    <span class="badge {% if attendance.status == 'pending' %}bg-warning{% elif attendance.status == 'approved' %}bg-success{% elif attendance.status == 'rejected' %}bg-danger{% endif %} text-white">
+                        {{ attendance.get_status_display }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <p class="mb-2"><strong>Employee:</strong> {{ attendance.employee.get_full_name|default:attendance.employee.username }}</p>
+                            <p class="mb-2"><strong>Department:</strong> {{ attendance.employee.userprofile.department|default:'Not specified' }}</p>
+                            <p class="mb-2"><strong>Position:</strong> {{ attendance.employee.userprofile.position|default:'Not specified' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-2"><strong>Date:</strong> {{ attendance.date }}</p>
+                            <p class="mb-2">
+                                <strong>Check-in:</strong> {{ attendance.check_in|time:"H:i" }}
+                                {% if is_late %}
+                                <span class="badge bg-warning">Late</span>
+                                {% endif %}
+                            </p>
+                            <p class="mb-2">
+                                <strong>Check-out:</strong> 
+                                {% if attendance.check_out %}
+                                {{ attendance.check_out|time:"H:i" }}
+                                {% else %}
+                                <span class="text-muted">Not checked out</span>
+                                {% endif %}
+                            </p>
+                            {% if duration %}
+                            <p class="mb-2"><strong>Duration:</strong> {{ duration }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if attendance.notes %}
+                    <div class="mb-4">
+                        <h6 class="font-weight-bold">Notes</h6>
+                        <div class="border rounded p-3 bg-light">
+                            {{ attendance.notes }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if attendance.status == 'rejected' and attendance.rejection_reason %}
+                    <div class="mb-4">
+                        <h6 class="font-weight-bold text-danger">Rejection Reason</h6>
+                        <div class="border border-danger rounded p-3 bg-light">
+                            {{ attendance.rejection_reason }}
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if attendance.status == 'pending' %}
+                    <div class="d-flex justify-content-end mt-4">
+                        <a href="{% url 'attendance:approve_attendance' attendance.id %}" class="btn btn-success me-2">
+                            <i class="fas fa-check me-1"></i> Approve
+                        </a>
+                        <a href="{% url 'attendance:reject_attendance' attendance.id %}" class="btn btn-danger">
+                            <i class="fas fa-times me-1"></i> Reject
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Monthly Attendance</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-3">Employee's attendance records for the current month</p>
+                    
+                    <!-- This could be a small chart or summary of the employee's attendance this month -->
+                    <div class="d-flex justify-content-around text-center mb-4">
+                        <div class="px-3">
+                            <div class="mb-2">
+                                <i class="fas fa-check-circle text-success fa-2x"></i>
+                            </div>
+                            <div class="font-weight-bold">Present</div>
+                            <div class="h4">{{ attendance.employee.attendance_records.filter(status='approved').count }}</div>
+                        </div>
+                        <div class="px-3">
+                            <div class="mb-2">
+                                <i class="fas fa-clock text-warning fa-2x"></i>
+                            </div>
+                            <div class="font-weight-bold">Late</div>
+                            <div class="h4">{{ attendance.employee.attendance_records.filter(is_late=True).count }}</div>
+                        </div>
+                        <div class="px-3">
+                            <div class="mb-2">
+                                <i class="fas fa-times-circle text-danger fa-2x"></i>
+                            </div>
+                            <div class="font-weight-bold">Absent</div>
+                            <div class="h4">0</div> <!-- This would need to be calculated -->
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Other attendance details or employee info could go here -->
+                    <p class="small text-muted mb-2">Attendance Information</p>
+                    <div class="list-group list-group-flush small">
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>First Check-in:</span>
+                            <span>{{ attendance.employee.first_attendance.check_in|date:"M d, Y" }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Total Approved:</span>
+                            <span>{{ attendance.employee.attendance_records.filter(status='approved').count }}</span>
+                        </div>
+                        <div class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>Total Rejected:</span>
+                            <span>{{ attendance.employee.attendance_records.filter(status='rejected').count }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
