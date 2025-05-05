@@ -1,0 +1,102 @@
+Build a comprehensive, modular Django-based web application tailored for Small and Medium Enterprises (SMEs), designed to improve operational efficiency through three main modules: Inventory Management, Virtual Attendance System, and Collaborative Messenger. The app must support two user roles — Employer (Admin) and Employee (User) — with dedicated dashboards and role-based access control.
+
+🔐 Authentication & User Roles
+Implement secure login/signup using Django’s authentication system.
+
+Define two roles: Employer (Admin) and Employee.
+
+Employers have access to all modules with administrative privileges.
+
+Employees can interact with the system based on limited permissions.
+
+Add password reset via email, two-factor authentication (optional).
+
+📦 Module 1: Inventory Management
+For SMEs to track stock, automate inventory updates, and manage supply-chain logistics.
+
+Employer Functionalities:
+
+Add/Edit/Delete products (name, SKU, category, supplier, price, quantity, threshold alert).
+
+Auto-alert via email or notification when stock falls below a threshold.
+
+View inventory analytics (e.g., most used products, restock frequency).
+
+Filter/search/sort inventory by category, availability, or date.
+
+Export inventory reports as PDF or Excel.
+
+Employee Functionalities:
+
+View available stock.
+
+Raise stock requests (used in manufacturing or sales roles).
+
+See restock status.
+
+⏱️ Module 2: Virtual Attendance System
+Enables accurate and automated employee attendance tracking.
+
+Employee Functionalities:
+
+Apply for attendance (check-in/check-out).
+
+View their attendance status: Pending / Approved / Rejected.
+
+Apply for leave (full-day, half-day) with date and reason.
+
+Track leave history and balance (e.g., total CL/SL available and used).
+
+Download monthly attendance report.
+
+Employer Functionalities:
+
+Dashboard showing today’s attendance status, late check-ins.
+
+Approve/Reject attendance requests and leaves.
+
+View attendance logs for each employee (monthly/yearly).
+
+Export attendance reports as Excel or PDF.
+
+Set automated policies: max leaves per month, working hours, auto-mark absent if no check-in.
+
+💬 Module 3: Collaborative Messenger
+Internal communication to improve team collaboration.
+
+All Users:
+
+Real-time messaging using WebSocket or Django Channels.
+
+One-on-one chat and group chat (per department/project).
+
+Share files (PDFs, images, documents) within chats.
+
+Mention (@name) tagging, message read indicators.
+
+Notifications for new messages, leave approvals, etc.
+
+Employer-only Features:
+
+Create chat groups (e.g., Sales, Tech, HR).
+
+Pin announcements or important messages.
+
+📊 Admin Dashboard (Employer)
+Overview widgets: Total Employees, Active Today, Leaves, Stock Alerts.
+
+Interactive charts using Chart.js or Django chart tools:
+
+Attendance trends
+
+Inventory stock levels
+
+Department-wise employee count
+
+Notification system for:
+
+Low inventory alerts
+
+New attendance or leave requests
+
+New chat messages
