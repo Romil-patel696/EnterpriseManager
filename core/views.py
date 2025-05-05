@@ -42,6 +42,7 @@ def dashboard(request):
         ).count()
         
         # Get attendance statistics
+        # Get attendance stats for the last 30 days
         attendance_stats = Attendance.objects.filter(
             date__gte=today - timezone.timedelta(days=30)
         ).values('date').annotate(
@@ -51,20 +52,40 @@ def dashboard(request):
             pending=Count('id', filter=Q(status=Attendance.PENDING))
         ).order_by('date')
         
+        # Convert datetime objects to string to make it serializable for JavaScript
+        attendance_stats_list = []
+        for stat in attendance_stats:
+            attendance_stats_list.append({
+                'date': stat['date'].isoformat(),
+                'count': stat['count'],
+                'approved': stat['approved'],
+                'rejected': stat['rejected'],
+                'pending': stat['pending']
+            })
+        
         # Get inventory statistics
         product_categories = Product.objects.values('category').annotate(
             count=Count('id'),
             total_value=Sum(models.F('price') * models.F('quantity'))
         ).order_by('-total_value')
         
+        # Convert product categories to serializable format
+        product_categories_list = []
+        for category in product_categories:
+            product_categories_list.append({
+                'category': category['category'] or 'Uncategorized',
+                'count': category['count'],
+                'total_value': float(category['total_value'] or 0)
+            })
+            
         context = {
             'is_employer': True,
             'employees_count': employees_count,
             'active_today': active_today,
             'pending_leave_requests': pending_leave_requests,
             'low_stock_products': low_stock_products,
-            'attendance_stats': list(attendance_stats),
-            'product_categories': list(product_categories)
+            'attendance_stats': attendance_stats_list,
+            'product_categories': product_categories_list
         }
         
         return render(request, 'core/employer_dashboard.html', context)
