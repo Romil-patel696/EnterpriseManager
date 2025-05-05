@@ -1,0 +1,514 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Attendance Management - SME App{% endblock %}
+
+{% block extra_css %}
+<style>
+    .attendance-card {
+        transition: all 0.3s;
+        height: 100%;
+    }
+    
+    .attendance-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .status-badge {
+        font-size: 0.9rem;
+        padding: 0.5rem 0.7rem;
+    }
+    
+    .clock-display {
+        font-size: 2.5rem;
+        font-weight: bold;
+        text-align: center;
+        margin: 1rem 0;
+    }
+    
+    .btn-status {
+        padding: 1rem 2rem;
+        font-size: 1.2rem;
+    }
+    
+    .stats-card {
+        border-left: 4px solid;
+        transition: all 0.3s;
+    }
+    
+    .stats-card:hover {
+        transform: translateX(5px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Attendance Management</h1>
+        
+        {% if is_employer %}
+        <div>
+            <a href="{% url 'attendance:attendance_approvals' %}" class="btn btn-primary">
+                <i class="fas fa-clipboard-check me-1"></i> Pending Approvals
+                {% if pending_attendance_count > 0 %}
+                <span class="badge bg-white text-primary">{{ pending_attendance_count }}</span>
+                {% endif %}
+            </a>
+            <a href="{% url 'attendance:leave_approvals' %}" class="btn btn-info">
+                <i class="fas fa-calendar-check me-1"></i> Leave Approvals
+                {% if pending_leaves_count > 0 %}
+                <span class="badge bg-white text-info">{{ pending_leaves_count }}</span>
+                {% endif %}
+            </a>
+            <a href="{% url 'attendance:attendance_reports' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-file-export me-1"></i> Reports
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if is_employee %}
+    <!-- Employee View -->
+    <div class="row">
+        <!-- Today's Attendance Card -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow attendance-card">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Today's Attendance</h6>
+                    <div>
+                        <span class="text-muted">{{ today|date:"l, F d, Y" }}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="clock-display" id="digital-clock">
+                        00:00:00
+                    </div>
+                    
+                    <div class="text-center mb-4">
+                        {% if checked_in %}
+                            {% if attendance_status == 'approved' %}
+                                <div class="alert alert-success" role="alert">
+                                    <i class="fas fa-check-circle me-1"></i> You are checked in for today
+                                </div>
+                            {% elif attendance_status == 'pending' %}
+                                <div class="alert alert-warning" role="alert">
+                                    <i class="fas fa-clock me-1"></i> Your attendance is pending approval
+                                </div>
+                            {% elif attendance_status == 'rejected' %}
+                                <div class="alert alert-danger" role="alert">
+                                    <i class="fas fa-times-circle me-1"></i> Your attendance was rejected
+                                </div>
+                            {% endif %}
+                            
+                            <div class="row text-center mb-3">
+                                <div class="col-6">
+                                    <h5 class="mb-0">Check In</h5>
+                                    <p class="lead">{{ check_in_time|time:"H:i" }}</p>
+                                </div>
+                                <div class="col-6">
+                                    <h5 class="mb-0">Check Out</h5>
+                                    <p class="lead">{{ check_out_time|time:"H:i"|default:"--:--" }}</p>
+                                </div>
+                            </div>
+                            
+                            {% if not check_out_time %}
+                                <a href="{% url 'attendance:request' %}" class="btn btn-warning btn-status">
+                                    <i class="fas fa-sign-out-alt me-1"></i> Check Out
+                                </a>
+                            {% else %}
+                                <button class="btn btn-secondary btn-status" disabled>
+                                    <i class="fas fa-check-circle me-1"></i> Checked Out
+                                </button>
+                            {% endif %}
+                        {% else %}
+                            <a href="{% url 'attendance:request' %}" class="btn btn-primary btn-status">
+                                <i class="fas fa-sign-in-alt me-1"></i> Check In
+                            </a>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="text-center mt-3">
+                        <p class="text-muted">
+                            Remember to check in when you start work and check out when you're done for the day.
+                        </p>
+                        <a href="{% url 'attendance:history' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-history me-1"></i> View Attendance History
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Leave Status Card -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow attendance-card">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Leave Management</h6>
+                    <a href="{% url 'attendance:leave_request' %}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-plus-circle me-1"></i> Apply for Leave
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        {% if leave_balance %}
+                            <div class="col-md-6">
+                                <div class="card border-left-info mb-3" style="border-left-width: 4px;">
+                                    <div class="card-body">
+                                        <div class="text-center">
+                                            <h5 class="card-title">Casual Leave</h5>
+                                            <div class="display-4 font-weight-bold text-info">{{ leave_balance.casual_leave }}</div>
+                                            <div class="text-muted">days remaining</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-left-warning mb-3" style="border-left-width: 4px;">
+                                    <div class="card-body">
+                                        <div class="text-center">
+                                            <h5 class="card-title">Sick Leave</h5>
+                                            <div class="display-4 font-weight-bold text-warning">{{ leave_balance.sick_leave }}</div>
+                                            <div class="text-muted">days remaining</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="col-12 text-center">
+                                <div class="alert alert-info">
+                                    Leave balance information is not available
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <h6 class="font-weight-bold">Pending Leave Requests</h6>
+                    <div class="list-group">
+                        {% for leave in pending_leaves %}
+                            <div class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ leave.leave_type.name }}</h6>
+                                    <small>{{ leave.created_at|date:"M d" }}</small>
+                                </div>
+                                <p class="mb-1">{{ leave.start_date|date:"M d" }} to {{ leave.end_date|date:"M d" }}</p>
+                                <small class="text-primary">Status: Pending</small>
+                            </div>
+                        {% empty %}
+                            <div class="text-center py-3">
+                                <i class="fas fa-calendar-check text-success mb-2" style="font-size: 2rem;"></i>
+                                <p>No pending leave requests</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="text-center mt-3">
+                        <a href="{% url 'attendance:leave_history' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-history me-1"></i> View Leave History
+                        </a>
+                        <a href="{% url 'attendance:leave_balance' %}" class="btn btn-outline-info">
+                            <i class="fas fa-balance-scale me-1"></i> Check Leave Balance
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Attendance History -->
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Attendance History</h6>
+                    <a href="{% url 'attendance:history' %}" class="btn btn-sm btn-link">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Check In</th>
+                                    <th>Check Out</th>
+                                    <th>Duration</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in attendance_history %}
+                                <tr>
+                                    <td>{{ record.date|date:"M d, Y" }}</td>
+                                    <td>{{ record.check_in|time|default:"-" }}</td>
+                                    <td>{{ record.check_out|time|default:"-" }}</td>
+                                    <td>
+                                        {% if record.check_out %}
+                                            {% with hours=record.get_duration %}
+                                                {{ hours|floatformat:2 }} hrs
+                                            {% endwith %}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if record.status == 'approved' %}
+                                            <span class="badge bg-success">Approved</span>
+                                        {% elif record.status == 'pending' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% elif record.status == 'rejected' %}
+                                            <span class="badge bg-danger">Rejected</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-3">No attendance records found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% elif is_employer %}
+    <!-- Employer View -->
+    <div class="row">
+        <!-- Today's Stats -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2 stats-card" style="border-left-color: #4e73df;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Present Today</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ present_count }} / {{ total_employees }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-user-check fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2 stats-card" style="border-left-color: #f6c23e;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Pending Attendance</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2 stats-card" style="border-left-color: #e74a3b;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Absent</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ absent_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-user-times fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2 stats-card" style="border-left-color: #36b9cc;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Pending Leave Requests</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_leaves_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar-alt fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Pending Approvals & Recent Activity -->
+    <div class="row">
+        <!-- Pending Attendance Approvals -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow attendance-card">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Pending Attendance Approvals</h6>
+                    <a href="{% url 'attendance:attendance_approvals' %}" class="btn btn-sm btn-link">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for attendance in pending_attendance %}
+                            <a href="{% url 'attendance:attendance_approval_detail' attendance.id %}" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ attendance.employee.get_full_name|default:attendance.employee.username }}</h6>
+                                    <small>{{ attendance.date|date:"M d" }}</small>
+                                </div>
+                                <p class="mb-1">
+                                    Check In: {{ attendance.check_in|time }}
+                                    {% if attendance.check_out %}
+                                        | Check Out: {{ attendance.check_out|time }}
+                                    {% endif %}
+                                </p>
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <small class="text-muted">Submitted {{ attendance.created_at|timesince }} ago</small>
+                                    <div>
+                                        <a href="{% url 'attendance:approve_attendance' attendance.id %}" class="btn btn-sm btn-success">
+                                            <i class="fas fa-check me-1"></i> Approve
+                                        </a>
+                                        <a href="{% url 'attendance:reject_attendance' attendance.id %}" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-times me-1"></i> Reject
+                                        </a>
+                                    </div>
+                                </div>
+                            </a>
+                        {% empty %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-check-circle text-success mb-2" style="font-size: 2rem;"></i>
+                                <p>No pending attendance approvals</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pending Leave Approvals -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow attendance-card">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Pending Leave Approvals</h6>
+                    <a href="{% url 'attendance:leave_approvals' %}" class="btn btn-sm btn-link">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for leave in pending_leaves %}
+                            <a href="{% url 'attendance:leave_approval_detail' leave.id %}" class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ leave.employee.get_full_name|default:leave.employee.username }}</h6>
+                                    <small>{{ leave.created_at|date:"M d" }}</small>
+                                </div>
+                                <p class="mb-1">
+                                    {{ leave.leave_type.name }} | {{ leave.start_date|date:"M d" }} to {{ leave.end_date|date:"M d" }}
+                                    ({{ leave.get_day_type_display }})
+                                </p>
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <small class="text-muted">{{ leave.reason|truncatechars:50 }}</small>
+                                    <div>
+                                        <a href="{% url 'attendance:approve_leave' leave.id %}" class="btn btn-sm btn-success">
+                                            <i class="fas fa-check me-1"></i> Approve
+                                        </a>
+                                        <a href="{% url 'attendance:reject_leave' leave.id %}" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-times me-1"></i> Reject
+                                        </a>
+                                    </div>
+                                </div>
+                            </a>
+                        {% empty %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-check-circle text-success mb-2" style="font-size: 2rem;"></i>
+                                <p>No pending leave approvals</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Activity -->
+        <div class="col-12 mb-4">
+            <div class="card shadow attendance-card">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Attendance Activity</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Date</th>
+                                    <th>Check In</th>
+                                    <th>Check Out</th>
+                                    <th>Duration</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for activity in recent_activity %}
+                                <tr>
+                                    <td>{{ activity.employee.get_full_name|default:activity.employee.username }}</td>
+                                    <td>{{ activity.date|date:"M d, Y" }}</td>
+                                    <td>{{ activity.check_in|time|default:"-" }}</td>
+                                    <td>{{ activity.check_out|time|default:"-" }}</td>
+                                    <td>
+                                        {% if activity.check_out %}
+                                            {% with hours=activity.get_duration %}
+                                                {{ hours|floatformat:2 }} hrs
+                                            {% endwith %}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">Approved</span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-3">No recent attendance activity</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Digital Clock
+    function updateClock() {
+        const now = new Date();
+        let hours = now.getHours();
+        let minutes = now.getMinutes();
+        let seconds = now.getSeconds();
+        
+        // Add leading zeros
+        hours = hours < 10 ? '0' + hours : hours;
+        minutes = minutes < 10 ? '0' + minutes : minutes;
+        seconds = seconds < 10 ? '0' + seconds : seconds;
+        
+        // Display time
+        document.getElementById('digital-clock').textContent = `${hours}:${minutes}:${seconds}`;
+        
+        // Update every second
+        setTimeout(updateClock, 1000);
+    }
+    
+    updateClock();
+</script>
+{% endblock %}

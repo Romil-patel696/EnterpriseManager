@@ -1,0 +1,193 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Product List - SME App{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-container {
+        background-color: #f8f9fc;
+        border-radius: 0.35rem;
+        padding: 1rem;
+    }
+    
+    .product-image-placeholder {
+        width: 50px;
+        height: 50px;
+        background-color: #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+    }
+    
+    .low-stock {
+        background-color: #fff3cd;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Products</h1>
+        
+        {% if user.is_employer %}
+        <div>
+            <a href="{% url 'inventory:product_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus-circle me-1"></i> Add New Product
+            </a>
+            <a href="{% url 'inventory:export_inventory' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-file-export me-1"></i> Export
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Filters -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Search & Filter</h6>
+        </div>
+        <div class="card-body">
+            <form method="get" id="product-filter-form" class="row g-3" hx-get="{% url 'inventory:product_list' %}" hx-target="#products-table-body" hx-trigger="submit" hx-indicator="#loading-indicator">
+                <div class="col-md-3">
+                    {{ product_filter.form.name }}
+                    <label class="form-label small text-muted">Name</label>
+                </div>
+                <div class="col-md-3">
+                    {{ product_filter.form.sku }}
+                    <label class="form-label small text-muted">SKU</label>
+                </div>
+                <div class="col-md-2">
+                    {{ product_filter.form.category }}
+                    <label class="form-label small text-muted">Category</label>
+                </div>
+                <div class="col-md-2">
+                    {{ product_filter.form.supplier }}
+                    <label class="form-label small text-muted">Supplier</label>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-check mt-4">
+                        {{ product_filter.form.low_stock }}
+                        <label class="form-check-label" for="{{ product_filter.form.low_stock.id_for_label }}">
+                            Low Stock Only
+                        </label>
+                    </div>
+                </div>
+                <div class="col-md-12 text-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-1"></i> Apply Filters
+                    </button>
+                    <a href="{% url 'inventory:product_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-redo me-1"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Products Table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Product List</h6>
+            <div id="loading-indicator" class="htmx-indicator">
+                <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                <span>Loading...</span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="productsTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Supplier</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>Value</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="products-table-body">
+                        {% include 'inventory/partials/product_table.html' %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Pagination -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="First">
+                    <span aria-hidden="true">&laquo;&laquo;</span>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">&laquo;&laquo;</span>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">&laquo;</span>
+            </li>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                </li>
+                {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Last">
+                    <span aria-hidden="true">&raquo;&raquo;</span>
+                </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">&raquo;</span>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">&raquo;&raquo;</span>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Highlight rows with low stock
+        document.querySelectorAll('.low-stock-indicator').forEach(el => {
+            if (el.textContent.trim() === 'Low Stock') {
+                el.closest('tr').classList.add('low-stock');
+            }
+        });
+    });
+</script>
+{% endblock %}

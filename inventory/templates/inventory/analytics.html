@@ -1,0 +1,425 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Inventory Analytics - SME App{% endblock %}
+
+{% block extra_css %}
+<style>
+    .analytics-card {
+        transition: all 0.3s;
+        height: 100%;
+    }
+    
+    .analytics-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+    
+    .value-card {
+        border-left: 4px solid;
+        transition: all 0.3s;
+    }
+    
+    .value-card:hover {
+        transform: translateX(5px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Inventory Analytics</h1>
+        
+        <div>
+            <a href="{% url 'inventory:export_inventory' %}" class="btn btn-primary">
+                <i class="fas fa-file-export me-1"></i> Export Report
+            </a>
+            <a href="{% url 'inventory:product_list' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-list me-1"></i> View Products
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2 value-card" style="border-left-color: #4e73df;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Products</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_products }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-boxes fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2 value-card" style="border-left-color: #1cc88a;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Total Inventory Value</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ total_value|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2 value-card" style="border-left-color: #36b9cc;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Categories</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ categories|length }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-sitemap fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2 value-card" style="border-left-color: #f6c23e;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Low Stock Items</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ low_stock|length }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row">
+        <!-- Category Distribution Chart -->
+        <div class="col-xl-6 mb-4">
+            <div class="card shadow analytics-card">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Inventory by Category</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stock Changes Chart -->
+        <div class="col-xl-6 mb-4">
+            <div class="card shadow analytics-card">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Monthly Stock Changes</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="stockChangesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Products & Low Stock -->
+    <div class="row">
+        <!-- Top Products by Value -->
+        <div class="col-xl-6 mb-4">
+            <div class="card shadow analytics-card">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Top Products by Value</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="topProductsTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>SKU</th>
+                                    <th>Category</th>
+                                    <th>Quantity</th>
+                                    <th>Unit Price</th>
+                                    <th>Total Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in top_products %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'inventory:product_detail' product.id %}">
+                                            {{ product.name }}
+                                        </a>
+                                    </td>
+                                    <td>{{ product.sku }}</td>
+                                    <td>{{ product.category.name|default:"N/A" }}</td>
+                                    <td>{{ product.quantity }}</td>
+                                    <td>${{ product.price|floatformat:2 }}</td>
+                                    <td>${{ product.value|floatformat:2 }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center">No products available</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Low Stock Items -->
+        <div class="col-xl-6 mb-4">
+            <div class="card shadow analytics-card">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Low Stock Items</h6>
+                    <a href="{% url 'inventory:export_inventory' %}?low_stock=true" class="btn btn-sm btn-warning">
+                        <i class="fas fa-file-export me-1"></i> Export Low Stock Report
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="lowStockTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Current Stock</th>
+                                    <th>Threshold</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in low_stock %}
+                                <tr class="{% if product.quantity == 0 %}table-danger{% else %}table-warning{% endif %}">
+                                    <td>
+                                        <a href="{% url 'inventory:product_detail' product.id %}">
+                                            {{ product.name }}
+                                        </a>
+                                    </td>
+                                    <td>{{ product.quantity }}</td>
+                                    <td>{{ product.threshold_quantity }}</td>
+                                    <td>
+                                        {% if product.quantity == 0 %}
+                                        <span class="badge bg-danger">Out of Stock</span>
+                                        {% else %}
+                                        <span class="badge bg-warning text-dark">Low Stock</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'inventory:product_update' product.id %}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-sync me-1"></i> Update Stock
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center">
+                                        <div class="py-3">
+                                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                                            <p>No low stock items! All inventory levels are healthy.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Breakdown -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card shadow analytics-card">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Category Breakdown</h6>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="categoriesTable" width="100%" cellspacing="0">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th>Products Count</th>
+                                    <th>Total Value</th>
+                                    <th>Average Price</th>
+                                    <th>Low Stock Items</th>
+                                    <th>% of Total Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for category in categories %}
+                                <tr>
+                                    <td>{{ category.name }}</td>
+                                    <td>{{ category.products_count }}</td>
+                                    <td>${{ category.total_value|default:0|floatformat:2 }}</td>
+                                    <td>${{ category.total_value|default:0|div:category.products_count|floatformat:2 }}</td>
+                                    <td>
+                                        {% with low_count=low_stock|filter_by_category:category.id|length %}
+                                            {% if low_count > 0 %}
+                                                <span class="badge bg-warning">{{ low_count }}</span>
+                                            {% else %}
+                                                <span class="badge bg-success">0</span>
+                                            {% endif %}
+                                        {% endwith %}
+                                    </td>
+                                    <td>
+                                        <div class="progress">
+                                            <div class="progress-bar" role="progressbar" 
+                                                style="width: {{ category.total_value|default:0|div:total_value|mul:100 }}%">
+                                                {{ category.total_value|default:0|div:total_value|mul:100|floatformat:1 }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center">No categories available</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Category Distribution Chart
+        const ctxCategory = document.getElementById('categoryChart').getContext('2d');
+        const categoryData = {
+            labels: [{% for category in categories %}'{{ category.name }}'{% if not forloop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                data: [{% for category in categories %}{{ category.total_value|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                backgroundColor: [
+                    '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b',
+                    '#5a5c69', '#858796', '#f8f9fc', '#d1d3e2', '#dddfeb'
+                ],
+                hoverBackgroundColor: [
+                    '#2e59d9', '#17a673', '#2c9faf', '#dda20a', '#be2617',
+                    '#3a3b45', '#60616f', '#d8daeb', '#b5b8c8', '#c8cad9'
+                ],
+                hoverBorderColor: "rgba(234, 236, 244, 1)",
+            }]
+        };
+        
+        new Chart(ctxCategory, {
+            type: 'doughnut',
+            data: categoryData,
+            options: {
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'right',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                let value = context.raw || 0;
+                                let total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                let percentage = Math.round((value / total) * 100);
+                                return `${label}: $${value.toLocaleString()} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Stock Changes Chart
+        const ctxStockChanges = document.getElementById('stockChangesChart').getContext('2d');
+        const stockChangesData = {
+            labels: {{ chart_data.months|safe }},
+            datasets: [
+                {
+                    label: 'Additions',
+                    data: {{ chart_data.additions|safe }},
+                    backgroundColor: 'rgba(28, 200, 138, 0.2)',
+                    borderColor: 'rgba(28, 200, 138, 1)',
+                    pointBackgroundColor: 'rgba(28, 200, 138, 1)',
+                    pointBorderColor: "#fff",
+                    borderWidth: 2,
+                    tension: 0.3
+                },
+                {
+                    label: 'Reductions',
+                    data: {{ chart_data.reductions|safe }},
+                    backgroundColor: 'rgba(231, 74, 59, 0.2)',
+                    borderColor: 'rgba(231, 74, 59, 1)',
+                    pointBackgroundColor: 'rgba(231, 74, 59, 1)',
+                    pointBorderColor: "#fff",
+                    borderWidth: 2,
+                    tension: 0.3
+                }
+            ]
+        };
+        
+        new Chart(ctxStockChanges, {
+            type: 'line',
+            data: stockChangesData,
+            options: {
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            drawBorder: false,
+                            color: "rgba(0, 0, 0, 0.05)"
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false,
+                            drawBorder: false
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

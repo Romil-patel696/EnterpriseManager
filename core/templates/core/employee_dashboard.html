@@ -1,0 +1,254 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Employee Dashboard - SME App{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Employee Dashboard</h1>
+        <div>
+            <span class="text-muted me-3">Welcome, {{ user.get_full_name|default:user.username }}</span>
+            <span class="badge bg-primary">{{ user.userprofile.department|default:"No Department" }}</span>
+        </div>
+    </div>
+
+    <!-- Status Cards -->
+    <div class="row">
+        <!-- Today's Attendance Status -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Today's Attendance</h6>
+                    <a href="{% url 'attendance:request' %}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-plus-circle me-1"></i> Check In/Out
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if attendance_today %}
+                        <div class="text-center mb-3">
+                            {% if attendance_today.status == 'approved' %}
+                                <div class="text-success">
+                                    <i class="fas fa-check-circle fa-3x mb-2"></i>
+                                    <h5>Checked In</h5>
+                                </div>
+                            {% elif attendance_today.status == 'pending' %}
+                                <div class="text-warning">
+                                    <i class="fas fa-clock fa-3x mb-2"></i>
+                                    <h5>Pending Approval</h5>
+                                </div>
+                            {% elif attendance_today.status == 'rejected' %}
+                                <div class="text-danger">
+                                    <i class="fas fa-times-circle fa-3x mb-2"></i>
+                                    <h5>Rejected</h5>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Check-in Time
+                                <span>{{ attendance_today.check_in|time }}</span>
+                            </li>
+                            {% if attendance_today.check_out %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Check-out Time
+                                    <span>{{ attendance_today.check_out|time }}</span>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-user-clock fa-3x mb-3 text-secondary"></i>
+                            <p>You haven't checked in today.</p>
+                            <a href="{% url 'attendance:request' %}" class="btn btn-primary mt-2">
+                                Check In Now
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Leave Balance -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Leave Balance</h6>
+                    <a href="{% url 'attendance:leave_request' %}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-calendar-plus me-1"></i> Apply Leave
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="p-3 rounded bg-light mb-2">
+                                <h4 class="mb-0">{{ leave_balance.casual|default:0 }}</h4>
+                            </div>
+                            <div class="text-muted">Casual Leave</div>
+                        </div>
+                        <div class="col-6">
+                            <div class="p-3 rounded bg-light mb-2">
+                                <h4 class="mb-0">{{ leave_balance.sick|default:0 }}</h4>
+                            </div>
+                            <div class="text-muted">Sick Leave</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <h6 class="text-center mb-3">Recent Leave Applications</h6>
+                        <div class="list-group">
+                            {% for leave in recent_leaves %}
+                                <a href="{% url 'attendance:leave_detail' leave.id %}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1">{{ leave.get_leave_type_display }}</h6>
+                                        <small class="text-muted">{{ leave.start_date|date:"M d" }}</small>
+                                    </div>
+                                    <p class="mb-1">{{ leave.reason|truncatechars:30 }}</p>
+                                    <small class="text-primary">Status: {{ leave.get_status_display }}</small>
+                                </a>
+                            {% empty %}
+                                <div class="text-center text-muted py-3">
+                                    No recent leave applications
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Links -->
+        <div class="col-lg-4 col-md-12 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <a href="{% url 'inventory:request_stock' %}" class="btn btn-outline-primary btn-block py-3">
+                                <i class="fas fa-boxes mb-2 d-block" style="font-size: 1.5rem;"></i>
+                                Request Stock
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="{% url 'attendance:export_my_attendance' %}" class="btn btn-outline-success btn-block py-3">
+                                <i class="fas fa-file-download mb-2 d-block" style="font-size: 1.5rem;"></i>
+                                Export Report
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="{% url 'messenger:index' %}" class="btn btn-outline-info btn-block py-3">
+                                <i class="fas fa-comments mb-2 d-block" style="font-size: 1.5rem;"></i>
+                                Messages
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="{% url 'inventory:view_stock' %}" class="btn btn-outline-secondary btn-block py-3">
+                                <i class="fas fa-search mb-2 d-block" style="font-size: 1.5rem;"></i>
+                                View Stock
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance History & Inventory Requests -->
+    <div class="row">
+        <!-- Attendance History -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Attendance</h6>
+                    <a href="{% url 'attendance:history' %}" class="btn btn-sm btn-link">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Check In</th>
+                                    <th>Check Out</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in attendance_history|slice:":5" %}
+                                <tr>
+                                    <td>{{ record.date|date:"M d, Y" }}</td>
+                                    <td>{{ record.check_in|time|default:"-" }}</td>
+                                    <td>{{ record.check_out|time|default:"-" }}</td>
+                                    <td>
+                                        {% if record.status == 'approved' %}
+                                            <span class="badge bg-success">Approved</span>
+                                        {% elif record.status == 'pending' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% elif record.status == 'rejected' %}
+                                            <span class="badge bg-danger">Rejected</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-3">No attendance records found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stock Requests -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Stock Requests</h6>
+                    <a href="{% url 'inventory:my_requests' %}" class="btn btn-sm btn-link">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Quantity</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for request in stock_requests|slice:":5" %}
+                                <tr>
+                                    <td>{{ request.product.name }}</td>
+                                    <td>{{ request.quantity }}</td>
+                                    <td>{{ request.created_at|date:"M d, Y" }}</td>
+                                    <td>
+                                        {% if request.status == 'approved' %}
+                                            <span class="badge bg-success">Approved</span>
+                                        {% elif request.status == 'pending' %}
+                                            <span class="badge bg-warning">Pending</span>
+                                        {% elif request.status == 'rejected' %}
+                                            <span class="badge bg-danger">Rejected</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-3">No stock requests found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

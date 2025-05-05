@@ -1,0 +1,373 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Inventory - SME App{% endblock %}
+
+{% block extra_css %}
+<style>
+    .module-card {
+        transition: all 0.3s;
+    }
+    .module-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    .info-box {
+        border-left: 4px solid;
+        transition: all 0.3s;
+    }
+    .info-box:hover {
+        transform: translateX(5px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Inventory Management</h1>
+        
+        {% if is_employer %}
+        <div>
+            <a href="{% url 'inventory:product_create' %}" class="btn btn-primary">
+                <i class="fas fa-plus-circle me-1"></i> Add New Product
+            </a>
+            <a href="{% url 'inventory:analytics' %}" class="btn btn-info">
+                <i class="fas fa-chart-pie me-1"></i> Analytics
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Quick Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2 info-box" style="border-left-color: #4e73df;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Products</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_products }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-boxes fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2 info-box" style="border-left-color: #f6c23e;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Low Stock Products</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ low_stock_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if is_employer %}
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2 info-box" style="border-left-color: #36b9cc;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Pending Requests</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_requests }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2 info-box" style="border-left-color: #1cc88a;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Total Stock Value</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ total_stock_value|floatformat:2 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% elif is_employee %}
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2 info-box" style="border-left-color: #36b9cc;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                My Pending Requests</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ my_pending_requests }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2 info-box" style="border-left-color: #1cc88a;">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Quick Actions</div>
+                            <div class="text-center mt-2">
+                                <a href="{% url 'inventory:request_stock' %}" class="btn btn-sm btn-success">
+                                    <i class="fas fa-shopping-cart me-1"></i> Request Stock
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-tasks fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Main Content Row -->
+    <div class="row">
+        <!-- Quick Access Modules -->
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Inventory Modules</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-4">
+                            <div class="card module-card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-boxes fa-3x text-primary mb-3"></i>
+                                    <h5 class="card-title">Products</h5>
+                                    <p class="card-text">Manage your product inventory, check stock levels, and update product information.</p>
+                                    <a href="{% url 'inventory:product_list' %}" class="btn btn-outline-primary">
+                                        {% if is_employer %}Manage Products{% else %}View Products{% endif %}
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if is_employer %}
+                        <div class="col-md-4 mb-4">
+                            <div class="card module-card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-sitemap fa-3x text-success mb-3"></i>
+                                    <h5 class="card-title">Categories</h5>
+                                    <p class="card-text">Organize your products by creating and managing product categories.</p>
+                                    <a href="{% url 'inventory:category_list' %}" class="btn btn-outline-success">Manage Categories</a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-4">
+                            <div class="card module-card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-truck fa-3x text-info mb-3"></i>
+                                    <h5 class="card-title">Suppliers</h5>
+                                    <p class="card-text">Manage supplier information and track products from each supplier.</p>
+                                    <a href="{% url 'inventory:supplier_list' %}" class="btn btn-outline-info">Manage Suppliers</a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="col-md-4 mb-4">
+                            <div class="card module-card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-clipboard-list fa-3x text-warning mb-3"></i>
+                                    <h5 class="card-title">Stock Requests</h5>
+                                    <p class="card-text">
+                                        {% if is_employer %}Manage and approve stock requests from employees.
+                                        {% else %}Request products and track the status of your requests.{% endif %}
+                                    </p>
+                                    
+                                    {% if is_employer %}
+                                    <a href="{% url 'inventory:stock_request_list' %}" class="btn btn-outline-warning">View Requests</a>
+                                    {% else %}
+                                    <a href="{% url 'inventory:my_requests' %}" class="btn btn-outline-warning">My Requests</a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if is_employer %}
+                        <div class="col-md-4 mb-4">
+                            <div class="card module-card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-file-export fa-3x text-secondary mb-3"></i>
+                                    <h5 class="card-title">Reports</h5>
+                                    <p class="card-text">Generate and export inventory reports in various formats.</p>
+                                    <a href="{% url 'inventory:export_inventory' %}" class="btn btn-outline-secondary">Export Reports</a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-4">
+                            <div class="card module-card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-chart-pie fa-3x text-danger mb-3"></i>
+                                    <h5 class="card-title">Analytics</h5>
+                                    <p class="card-text">View detailed analytics and insights about your inventory.</p>
+                                    <a href="{% url 'inventory:analytics' %}" class="btn btn-outline-danger">View Analytics</a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar Content -->
+        <div class="col-lg-4">
+            {% if is_employer %}
+            <!-- Recent Inventory Logs -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Inventory Activity</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" style="max-height: 350px; overflow-y: auto;">
+                        {% for log in recent_logs %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ log.product.name }}</h6>
+                                <small class="text-muted">{{ log.created_at|timesince }} ago</small>
+                            </div>
+                            <p class="mb-1">
+                                {% if log.action == 'addition' %}
+                                <span class="text-success"><i class="fas fa-plus-circle"></i> Added</span>
+                                {% elif log.action == 'reduction' %}
+                                <span class="text-danger"><i class="fas fa-minus-circle"></i> Removed</span>
+                                {% else %}
+                                <span class="text-warning"><i class="fas fa-sync"></i> Adjusted</span>
+                                {% endif %}
+                                {{ log.quantity_change|abs }} units
+                            </p>
+                            <small>By {{ log.user.get_full_name|default:log.user.username }}</small>
+                        </div>
+                        {% empty %}
+                        <div class="list-group-item text-center py-4">
+                            <i class="fas fa-info-circle mb-2" style="font-size: 2rem;"></i>
+                            <p>No recent inventory activity</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Top Categories -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Top Product Categories</h6>
+                </div>
+                <div class="card-body">
+                    {% if top_categories %}
+                    <div style="max-height: 200px; overflow-y: auto;">
+                        <div class="list-group list-group-flush">
+                        {% for category in top_categories %}
+                            <div class="list-group-item">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ category.name }}</h6>
+                                    <span class="badge bg-primary rounded-pill">{{ category.products_count }}</span>
+                                </div>
+                                <div class="progress" style="height: 5px;">
+                                    <div class="progress-bar" role="progressbar" style="width: {{ category.products_count|div:total_products|mul:100 }}%"></div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-sitemap mb-2" style="font-size: 2rem;"></i>
+                        <p>No categories found</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <!-- My Recent Requests -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">My Recent Stock Requests</h6>
+                    <a href="{% url 'inventory:my_requests' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" style="max-height: 350px; overflow-y: auto;">
+                        {% for request in my_recent_requests %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ request.product.name }}</h6>
+                                <small>{{ request.created_at|date:"M d, Y" }}</small>
+                            </div>
+                            <p class="mb-1">Quantity: {{ request.quantity }}</p>
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">{{ request.reason|truncatechars:50 }}</small>
+                                {% if request.status == 'pending' %}
+                                <span class="badge bg-warning">Pending</span>
+                                {% elif request.status == 'approved' %}
+                                <span class="badge bg-success">Approved</span>
+                                {% elif request.status == 'rejected' %}
+                                <span class="badge bg-danger">Rejected</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="list-group-item text-center py-4">
+                            <i class="fas fa-clipboard-list mb-2" style="font-size: 2rem;"></i>
+                            <p>No recent stock requests</p>
+                            <a href="{% url 'inventory:request_stock' %}" class="btn btn-sm btn-primary mt-2">
+                                <i class="fas fa-plus-circle me-1"></i> Make a Request
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Access Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Need Something?</h6>
+                </div>
+                <div class="card-body text-center">
+                    <i class="fas fa-shopping-cart fa-3x text-primary mb-3"></i>
+                    <h5>Request Stock</h5>
+                    <p>Need inventory items for your work? Request them here.</p>
+                    <a href="{% url 'inventory:request_stock' %}" class="btn btn-primary">
+                        <i class="fas fa-plus-circle me-1"></i> New Stock Request
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

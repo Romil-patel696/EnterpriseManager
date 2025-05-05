@@ -1,0 +1,344 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Employer Dashboard - SME App{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        transition: all 0.3s;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    .chart-container {
+        height: 300px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Employer Dashboard</h1>
+        <div>
+            <button class="btn btn-sm btn-outline-secondary" id="refreshDashboardBtn">
+                <i class="fas fa-sync-alt me-1"></i> Refresh
+            </button>
+            <button class="btn btn-sm btn-outline-primary" id="exportDashboardBtn">
+                <i class="fas fa-file-export me-1"></i> Export Report
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2 stats-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Employees</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ employees_count }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2 stats-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Active Today</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ active_today }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2 stats-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Pending Leave Requests</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pending_leave_requests }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2 stats-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Low Stock Alerts</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ low_stock_products }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row">
+        <!-- Attendance Chart -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Attendance Trends (Last 30 Days)</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="attendanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventory Chart -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Inventory by Category</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="inventoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Access Row -->
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <a href="{% url 'inventory:product_create' %}" class="btn btn-primary btn-block">
+                                <i class="fas fa-plus me-1"></i> Add Product
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="{% url 'attendance:leave_approvals' %}" class="btn btn-info btn-block">
+                                <i class="fas fa-clipboard-check me-1"></i> Approve Leaves
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="{% url 'inventory:export_inventory' %}" class="btn btn-success btn-block">
+                                <i class="fas fa-file-excel me-1"></i> Export Inventory
+                            </a>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <a href="{% url 'attendance:export_attendance' %}" class="btn btn-warning btn-block">
+                                <i class="fas fa-file-pdf me-1"></i> Export Attendance
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Pending Approvals</h6>
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    <div class="list-group">
+                        {% for leave in pending_leaves %}
+                        <a href="{% url 'attendance:leave_approval_detail' leave.id %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ leave.employee.get_full_name }}</h6>
+                                <small>{{ leave.start_date|date:"M d" }}</small>
+                            </div>
+                            <p class="mb-1">{{ leave.leave_type }} Leave</p>
+                        </a>
+                        {% empty %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-check text-success mb-2" style="font-size: 2rem;"></i>
+                            <p>No pending approvals!</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Recent Notifications</h6>
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    <div class="list-group">
+                        {% for notification in recent_notifications %}
+                        <a href="{% if notification.link %}{{ notification.link }}{% else %}#{% endif %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ notification.title }}</h6>
+                                <small>{{ notification.created_at|timesince }} ago</small>
+                            </div>
+                            <p class="mb-1">{{ notification.message|truncatechars:100 }}</p>
+                        </a>
+                        {% empty %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-bell-slash text-secondary mb-2" style="font-size: 2rem;"></i>
+                            <p>No recent notifications!</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/charts.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Attendance Chart
+        const attendanceCtx = document.getElementById('attendanceChart').getContext('2d');
+        const attendanceData = {{ attendance_stats|safe }};
+        
+        // Prepare data for chart
+        const labels = attendanceData.map(item => item.date);
+        const approvedData = attendanceData.map(item => item.approved);
+        const pendingData = attendanceData.map(item => item.pending);
+        const rejectedData = attendanceData.map(item => item.rejected);
+        
+        new Chart(attendanceCtx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Approved',
+                        data: approvedData,
+                        backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                        borderColor: 'rgba(40, 167, 69, 1)',
+                        borderWidth: 2,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Pending',
+                        data: pendingData,
+                        backgroundColor: 'rgba(255, 193, 7, 0.2)',
+                        borderColor: 'rgba(255, 193, 7, 1)',
+                        borderWidth: 2,
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Rejected',
+                        data: rejectedData,
+                        backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                        borderColor: 'rgba(220, 53, 69, 1)',
+                        borderWidth: 2,
+                        tension: 0.1
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Inventory Chart
+        const inventoryCtx = document.getElementById('inventoryChart').getContext('2d');
+        const productData = {{ product_categories|safe }};
+        
+        // Prepare data for chart
+        const categoryLabels = productData.map(item => item.category);
+        const productCounts = productData.map(item => item.count);
+        const backgroundColors = [
+            '#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b',
+            '#5a5c69', '#858796', '#6610f2', '#fd7e14', '#20c9a6'
+        ];
+        
+        new Chart(inventoryCtx, {
+            type: 'doughnut',
+            data: {
+                labels: categoryLabels,
+                datasets: [
+                    {
+                        data: productCounts,
+                        backgroundColor: backgroundColors.slice(0, categoryLabels.length),
+                        hoverBackgroundColor: backgroundColors.slice(0, categoryLabels.length).map(color => color + 'dd'),
+                        hoverBorderColor: "rgba(234, 236, 244, 1)",
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Refresh dashboard button
+        document.getElementById('refreshDashboardBtn').addEventListener('click', function() {
+            location.reload();
+        });
+        
+        // Export dashboard button (example implementation)
+        document.getElementById('exportDashboardBtn').addEventListener('click', function() {
+            alert('Dashboard export functionality would be implemented here');
+        });
+    });
+</script>
+{% endblock %}

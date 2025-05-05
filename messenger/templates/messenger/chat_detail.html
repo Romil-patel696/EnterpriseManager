@@ -1,0 +1,326 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Chat{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        height: calc(100vh - 250px);
+        min-height: 400px;
+        display: flex;
+        flex-direction: column;
+    }
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 15px;
+    }
+    .message {
+        margin-bottom: 15px;
+        max-width: 75%;
+    }
+    .message-sent {
+        align-self: flex-end;
+        background-color: #dcf8c6;
+        text-align: right;
+        margin-left: auto;
+    }
+    .message-received {
+        align-self: flex-start;
+        background-color: #f1f0f0;
+    }
+    .message-bubble {
+        padding: 10px 15px;
+        border-radius: 15px;
+    }
+    .message-meta {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-top: 3px;
+    }
+    .typing-area {
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+    }
+    .participant-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Chat List Sidebar -->
+        <div class="col-md-3 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between">
+                    <h5 class="mb-0">Conversations</h5>
+                    <a href="{% url 'messenger:chat_list' %}" class="text-white">
+                        <i class="fas fa-chevron-left"></i> Back
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% for user_chat in request.user.chats.all %}
+                            <a href="{% url 'messenger:chat_detail' user_chat.id %}" 
+                               class="list-group-item list-group-item-action {% if user_chat.id == chat.id %}active{% endif %}">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        {% if user_chat.is_group_chat %}
+                                            <h6 class="mb-1">{{ user_chat.name }}</h6>
+                                        {% else %}
+                                            {% for participant in user_chat.participants.all %}
+                                                {% if participant != request.user %}
+                                                    <h6 class="mb-1">{{ participant.get_full_name|default:participant.username }}</h6>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Chat Main Area -->
+        <div class="col-md-9 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <div>
+                        {% if chat.is_group_chat %}
+                            <h5 class="mb-0">{{ chat.name }}</h5>
+                            <small>{{ chat.participants.count }} participants</small>
+                        {% else %}
+                            {% for participant in chat.participants.all %}
+                                {% if participant != request.user %}
+                                    <h5 class="mb-0">{{ participant.get_full_name|default:participant.username }}</h5>
+                                    {% if participant.userprofile.department %}
+                                        <small>{{ participant.userprofile.department }}</small>
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                    <div>
+                        <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#chatInfoModal">
+                            <i class="fas fa-info-circle"></i> Info
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="chat-container">
+                    <div class="chat-messages" id="chatMessages">
+                        {% for message in messages %}
+                            <div class="message {% if message.sender == request.user %}message-sent{% else %}message-received{% endif %}">
+                                {% if message.sender != request.user %}
+                                    <div class="message-sender">{{ message.sender.get_full_name|default:message.sender.username }}</div>
+                                {% endif %}
+                                <div class="message-bubble">
+                                    {{ message.content }}
+                                    {% if message.attachment %}
+                                        <div class="message-attachment mt-2">
+                                            <a href="{{ message.attachment.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                                <i class="fas fa-paperclip"></i> Attachment
+                                            </a>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="message-meta">
+                                    {{ message.timestamp|date:"M d, Y" }} at {{ message.timestamp|time:"H:i" }}
+                                    {% if message.sender == request.user %}
+                                        {% if message.is_read %}
+                                            <span class="text-primary"><i class="fas fa-check-double"></i></span>
+                                        {% else %}
+                                            <span class="text-muted"><i class="fas fa-check"></i></span>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div class="text-center text-muted my-5">
+                                <i class="fas fa-comments fa-3x mb-3"></i>
+                                <p>No messages yet. Start the conversation!</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="typing-area">
+                        <form method="post" action="{% url 'messenger:send_message' chat.id %}" enctype="multipart/form-data" id="messageForm">
+                            {% csrf_token %}
+                            <div class="input-group">
+                                <input type="text" name="content" class="form-control" placeholder="Type a message..." id="messageInput" required>
+                                <button class="btn btn-outline-secondary" type="button" id="attachButton">
+                                    <i class="fas fa-paperclip"></i>
+                                </button>
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="fas fa-paper-plane"></i> Send
+                                </button>
+                            </div>
+                            <input type="file" name="attachment" id="attachmentInput" class="d-none">
+                            <div id="attachmentPreview" class="mt-2 d-none">
+                                <div class="d-flex align-items-center">
+                                    <span class="badge bg-secondary me-2">
+                                        <i class="fas fa-file"></i> <span id="fileName"></span>
+                                    </span>
+                                    <button type="button" class="btn-close" id="removeAttachment"></button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chat Info Modal -->
+<div class="modal fade" id="chatInfoModal" tabindex="-1" aria-labelledby="chatInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="chatInfoModalLabel">
+                    {% if chat.is_group_chat %}
+                        Group Info: {{ chat.name }}
+                    {% else %}
+                        Chat Info
+                    {% endif %}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6>Participants</h6>
+                    <div class="list-group participant-list">
+                        {% for participant in chat.participants.all %}
+                            <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-1">{{ participant.get_full_name|default:participant.username }}</h6>
+                                    {% if participant.userprofile.department %}
+                                        <small class="text-muted">{{ participant.userprofile.department }}</small>
+                                    {% endif %}
+                                </div>
+                                {% if participant == request.user %}
+                                    <span class="badge bg-primary">You</span>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div>
+                    <h6>Created</h6>
+                    <p>{{ chat.created_at|date:"F d, Y" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Scroll to bottom of messages
+        const messagesContainer = document.getElementById('chatMessages');
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        
+        // Handle attachment button
+        const attachButton = document.getElementById('attachButton');
+        const attachmentInput = document.getElementById('attachmentInput');
+        const attachmentPreview = document.getElementById('attachmentPreview');
+        const fileName = document.getElementById('fileName');
+        const removeAttachment = document.getElementById('removeAttachment');
+        
+        attachButton.addEventListener('click', function() {
+            attachmentInput.click();
+        });
+        
+        attachmentInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                fileName.textContent = this.files[0].name;
+                attachmentPreview.classList.remove('d-none');
+            }
+        });
+        
+        removeAttachment.addEventListener('click', function() {
+            attachmentInput.value = '';
+            attachmentPreview.classList.add('d-none');
+        });
+        
+        // Set up WebSocket connection for real-time chat
+        const chatId = '{{ chat.id }}';
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/chat/${chatId}/`;
+        
+        let chatSocket = null;
+        try {
+            chatSocket = new WebSocket(wsUrl);
+            
+            chatSocket.onopen = function(e) {
+                console.log('WebSocket connection established');
+            };
+            
+            chatSocket.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                const userId = '{{ request.user.id }}';
+                
+                // Create new message element
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${data.sender_id == userId ? 'message-sent' : 'message-received'}`;
+                
+                let messageHTML = '';
+                
+                if (data.sender_id != userId) {
+                    messageHTML += `<div class="message-sender">${data.sender_username}</div>`;
+                }
+                
+                messageHTML += `
+                    <div class="message-bubble">${data.message}</div>
+                    <div class="message-meta">${data.timestamp}</div>
+                `;
+                
+                messageDiv.innerHTML = messageHTML;
+                messagesContainer.appendChild(messageDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            };
+            
+            chatSocket.onclose = function(e) {
+                console.error('WebSocket connection closed unexpectedly');
+            };
+            
+            chatSocket.onerror = function(e) {
+                console.error('WebSocket error:', e);
+            };
+            
+            // Handle form submission via WebSocket when possible
+            document.getElementById('messageForm').addEventListener('submit', function(e) {
+                const messageInput = document.getElementById('messageInput');
+                const messageContent = messageInput.value.trim();
+                const hasAttachment = attachmentInput.files.length > 0;
+                
+                if (messageContent && !hasAttachment && chatSocket.readyState === WebSocket.OPEN) {
+                    e.preventDefault(); // Prevent form submission
+                    
+                    // Send message via WebSocket
+                    chatSocket.send(JSON.stringify({
+                        'message': messageContent
+                    }));
+                    
+                    // Clear input field
+                    messageInput.value = '';
+                    
+                    // For attachments, the form will submit normally
+                }
+            });
+            
+        } catch (error) {
+            console.error('WebSocket connection error:', error);
+        }
+    });
+</script>
+{% endblock %}

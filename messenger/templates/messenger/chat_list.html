@@ -1,0 +1,142 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Messages{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between">
+                    <h5 class="mb-0">Conversations</h5>
+                    <button type="button" class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#newChatModal">
+                        <i class="fas fa-plus"></i> New
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        {% if chats %}
+                            {% for chat in chats %}
+                                <a href="{% url 'messenger:chat_detail' chat.id %}" class="list-group-item list-group-item-action">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            {% if chat.is_group_chat %}
+                                                <h6 class="mb-1">{{ chat.name }}</h6>
+                                                <small>{{ chat.participants.count }} participants</small>
+                                            {% else %}
+                                                {% for participant in chat.participants.all %}
+                                                    {% if participant != request.user %}
+                                                        <h6 class="mb-1">{{ participant.get_full_name|default:participant.username }}</h6>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            {% endif %}
+                                        </div>
+                                        <div>
+                                            {% with last_message=chat.get_last_message %}
+                                                {% if last_message %}
+                                                    <small class="text-muted">{{ last_message.timestamp|date:"M d" }}</small>
+                                                    {% if last_message.sender != request.user and not last_message.is_read %}
+                                                        <span class="badge bg-primary rounded-pill">New</span>
+                                                    {% endif %}
+                                                {% endif %}
+                                            {% endwith %}
+                                        </div>
+                                    </div>
+                                </a>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center p-4">
+                                <p class="text-muted">No conversations yet</p>
+                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newChatModal">
+                                    Start a new conversation
+                                </button>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8 mb-4">
+            <div class="card h-100">
+                <div class="card-body d-flex flex-column justify-content-center align-items-center">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-comments fa-4x mb-3"></i>
+                        <h4>Select a conversation</h4>
+                        <p>Choose an existing conversation or start a new one</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Chat Modal -->
+<div class="modal fade" id="newChatModal" tabindex="-1" aria-labelledby="newChatModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'messenger:new_chat' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="newChatModalLabel">New Conversation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="isGroupChat" name="is_group">
+                            <label class="form-check-label" for="isGroupChat">
+                                Create group chat
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="groupNameDiv" class="mb-3 d-none">
+                        <label for="groupName" class="form-label">Group Name</label>
+                        <input type="text" class="form-control" id="groupName" name="name" placeholder="Enter group name">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Select Recipients</label>
+                        <div class="user-select-container" style="max-height: 200px; overflow-y: auto;">
+                            {% for user in users %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="users" value="{{ user.id }}" id="user{{ user.id }}">
+                                    <label class="form-check-label" for="user{{ user.id }}">
+                                        {{ user.get_full_name|default:user.username }}
+                                        {% if user.userprofile.department %}
+                                            <small class="text-muted">({{ user.userprofile.department }})</small>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Start Conversation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const isGroupChatCheckbox = document.getElementById('isGroupChat');
+        const groupNameDiv = document.getElementById('groupNameDiv');
+        
+        isGroupChatCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                groupNameDiv.classList.remove('d-none');
+            } else {
+                groupNameDiv.classList.add('d-none');
+            }
+        });
+    });
+</script>
+{% endblock %}

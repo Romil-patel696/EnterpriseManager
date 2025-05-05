@@ -1,0 +1,128 @@
+{% extends 'core/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }} - SME App{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">{{ title }}</h6>
+                    <a href="{% url 'inventory:product_list' %}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-arrow-left me-1"></i> Back to Products
+                    </a>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.name|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.sku|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.category|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.supplier|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                {{ form.price|as_crispy_field }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.quantity|as_crispy_field }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.threshold_quantity|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        {{ form.description|as_crispy_field }}
+                        
+                        <div class="text-center mt-4">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-1"></i> Save Product
+                            </button>
+                            <a href="{% url 'inventory:product_list' %}" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Quick Tips Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Tips for Adding Products</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center mb-3">
+                                <i class="fas fa-tag fa-3x text-primary mb-2"></i>
+                                <h5>SKU Format</h5>
+                                <p class="small">Use a consistent SKU format for easy tracking. For example: CAT-SUBCAT-001</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center mb-3">
+                                <i class="fas fa-exclamation-triangle fa-3x text-warning mb-2"></i>
+                                <h5>Threshold Settings</h5>
+                                <p class="small">Set threshold quantities based on typical usage and restock lead times.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center mb-3">
+                                <i class="fas fa-file-alt fa-3x text-info mb-2"></i>
+                                <h5>Complete Descriptions</h5>
+                                <p class="small">Add detailed descriptions to help employees understand product purpose and usage.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sidebar with Category/Supplier management -->
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Need a New Category?</h6>
+                </div>
+                <div class="card-body text-center">
+                    <i class="fas fa-sitemap fa-3x text-primary mb-3"></i>
+                    <p>If you need to add a new product category that doesn't exist in the dropdown menu, you can create it here.</p>
+                    <a href="{% url 'inventory:category_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus-circle me-1"></i> Add New Category
+                    </a>
+                </div>
+            </div>
+            
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Need a New Supplier?</h6>
+                </div>
+                <div class="card-body text-center">
+                    <i class="fas fa-truck fa-3x text-primary mb-3"></i>
+                    <p>If you need to add a new supplier that doesn't exist in the dropdown menu, you can create it here.</p>
+                    <a href="{% url 'inventory:supplier_create' %}" class="btn btn-primary">
+                        <i class="fas fa-plus-circle me-1"></i> Add New Supplier
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
