@@ -19,6 +19,9 @@ DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['*']
 
+# CSRF settings
+CSRF_TRUSTED_ORIGINS = ['https://*.replit.dev', 'https://*.replit.app', 'http://localhost:5000']
+
 # Application definition
 
 INSTALLED_APPS = [
